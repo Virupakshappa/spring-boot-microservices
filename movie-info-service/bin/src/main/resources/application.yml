@@ -1,0 +1,7 @@
+api:
+  key: api-key-here
+server:
+  port: 8082
+spring:
+  application:
+    name: movie-info-service
