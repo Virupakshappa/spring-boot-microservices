@@ -11,6 +11,7 @@ import com.janadri.moviecatalogservice.models.CatalogItem;
 import com.janadri.moviecatalogservice.models.Movie;
 import com.janadri.moviecatalogservice.models.Rating;
 import com.janadri.moviecatalogservice.models.UserRating;
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,7 +28,9 @@ public class CatalogResource {
     @Autowired
     WebClient.Builder webClientBuilder;
 
+//whenever we get timeout issue or if any other microservice/s are down/slow, break the circuit and call the fallback method    
     @RequestMapping("/{userId}")
+    @HystrixCommand(fallbackMethod = "getFallbackCatalog")
     public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
 
         UserRating userRating = restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
@@ -40,8 +43,12 @@ public class CatalogResource {
                 .collect(Collectors.toList());
 
     }
-}
-
+//fallback method    
+    public List<CatalogItem> getFallbackCatalog(@PathVariable("userId") String userId) {
+    	return Arrays.asList(new CatalogItem("No Movie", "", 0));
+    }
+    
+    }
 /*
 Alternative WebClient way
 Movie movie = webClientBuilder.build().get().uri("http://localhost:8082/movies/"+ rating.getMovieId())
