@@ -3,3 +3,8 @@ server:
 spring:
   application:
     name: movie-catalog-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: hystrix.stream
