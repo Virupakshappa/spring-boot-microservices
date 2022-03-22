@@ -11,6 +11,8 @@ import com.janadri.moviecatalogservice.models.CatalogItem;
 import com.janadri.moviecatalogservice.models.Movie;
 import com.janadri.moviecatalogservice.models.Rating;
 import com.janadri.moviecatalogservice.models.UserRating;
+import com.janadri.moviecatalogservice.services.MovieInfo;
+import com.janadri.moviecatalogservice.services.UserRatingInfo;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 
 import java.util.Arrays;
@@ -22,35 +24,40 @@ import java.util.stream.Collectors;
 @RequestMapping("/catalog")
 public class CatalogResource {
 
-    @Autowired
-    private RestTemplate restTemplate;
+	@Autowired
+	private RestTemplate restTemplate;
 
-    @Autowired
-    WebClient.Builder webClientBuilder;
+	@Autowired
+	WebClient.Builder webClientBuilder;
+	
+	@Autowired
+	MovieInfo movieInfo;
+	
+	@Autowired
+	UserRatingInfo userRatingInfo;
+	
 
 //whenever we get timeout issue or if any other microservice/s are down/slow, break the circuit and call the fallback method    
-    @RequestMapping("/{userId}")
-    @HystrixCommand(fallbackMethod = "getFallbackCatalog")
-    public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
+	@RequestMapping("/{userId}")
+//    @HystrixCommand(fallbackMethod = "getFallbackCatalog")
+	public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
 
-        UserRating userRating = restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
+		UserRating userRating =userRatingInfo.getUserRating(userId);
 
-        return userRating.getRatings().stream()
-                .map(rating -> {
-                    Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
-                    return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
-                })
-                .collect(Collectors.toList());
+		return userRating.getRatings().stream().map(rating ->movieInfo.getCatalogItem(rating)).collect(Collectors.toList());
 
-    }
-//fallback method    
-    public List<CatalogItem> getFallbackCatalog(@PathVariable("userId") String userId) {
-    	return Arrays.asList(new CatalogItem("No Movie", "", 0));
-    }
-    
-    }
+	}
+
+	
+
+// fallback method    
+//    public List<CatalogItem> getFallbackCatalog(@PathVariable("userId") String userId) {
+//    	return Arrays.asList(new CatalogItem("No Movie", "", 0));
+//    }
+
+}
 /*
-Alternative WebClient way
-Movie movie = webClientBuilder.build().get().uri("http://localhost:8082/movies/"+ rating.getMovieId())
-.retrieve().bodyToMono(Movie.class).block();
-*/
+ * Alternative WebClient way Movie movie =
+ * webClientBuilder.build().get().uri("http://localhost:8082/movies/"+
+ * rating.getMovieId()) .retrieve().bodyToMono(Movie.class).block();
+ */
